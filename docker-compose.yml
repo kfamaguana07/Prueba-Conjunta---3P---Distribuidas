@@ -171,6 +171,20 @@ services:
     networks:
       - app-net
 
+  # ── Tienda e-commerce ──────────────────────────────────────────────────────
+  web:
+    image: nginx:alpine
+    container_name: cavalocal-web
+    restart: unless-stopped
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    networks:
+      - app-net
+
   # ── Dashboard de auditoría ────────────────────────────────────────────────
   dashboard:
     image: nginx:alpine
