@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model EventoAuditoria {
+  id           String   @id @default(uuid())
+  servicio     String
+  accion       String
+  entidad      String
+  datos        Json?
+  usuarioId    String?
+  usuarioEmail String?
+  timestamp    DateTime @default(now())
+
+  @@index([entidad])
+  @@index([accion])
+  @@index([usuarioId])
+  @@index([usuarioEmail])
+  @@index([timestamp])
+}
