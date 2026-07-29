@@ -1,0 +1,61 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cavalocal-ingress-api
+  namespace: cavalocal
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: conjunta3p.espe.edu.ec
+      http:
+        paths:
+          - path: /api/audit(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: ms-audit
+                port:
+                  number: 3002
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 3001
+          - path: /dashboard(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: dashboard
+                port:
+                  number: 80
+          - path: /landing(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: landing
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cavalocal-ingress-static
+  namespace: cavalocal
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: conjunta3p.espe.edu.ec
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80

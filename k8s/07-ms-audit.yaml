@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ms-audit
+  namespace: cavalocal
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ms-audit
+  template:
+    metadata:
+      labels:
+        app: ms-audit
+    spec:
+      initContainers:
+        - name: wait-for-postgres-audit
+          image: busybox
+          command: ["sh", "-c", "until nc -z postgres-audit 5432; do echo waiting for postgres-audit; sleep 2; done"]
+        - name: wait-for-rabbitmq
+          image: busybox
+          command: ["sh", "-c", "until nc -z rabbitmq 5672; do echo waiting for rabbitmq; sleep 2; done"]
+      containers:
+        - name: ms-audit
+          image: kfamaguana/cavalocal-ms-audit:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3002
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: cavalocal-config
+                  key: NODE_ENV
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: cavalocal-config
+                  key: AUDIT_PORT
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: cavalocal-secrets
+                  key: AUDIT_DATABASE_URL
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: cavalocal-config
+                  key: RABBITMQ_HOST
+            - name: RABBITMQ_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: cavalocal-config
+                  key: RABBITMQ_PORT
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: cavalocal-secrets
+                  key: RABBITMQ_USER
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cavalocal-secrets
+                  key: RABBITMQ_PASSWORD
+            - name: RABBITMQ_EXCHANGE
+              valueFrom:
+                configMapKeyRef:
+                  name: cavalocal-config
+                  key: RABBITMQ_EXCHANGE
+            - name: RABBITMQ_QUEUE
+              valueFrom:
+                configMapKeyRef:
+                  name: cavalocal-config
+                  key: RABBITMQ_QUEUE
+            - name: RABBITMQ_ROUTING_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: cavalocal-config
+                  key: RABBITMQ_ROUTING_KEY
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: 60
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ms-audit
+  namespace: cavalocal
+spec:
+  selector:
+    app: ms-audit
+  ports:
+    - port: 3002
+      targetPort: 3002
