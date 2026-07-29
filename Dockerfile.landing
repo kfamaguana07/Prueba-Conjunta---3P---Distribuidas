@@ -1,0 +1,9 @@
+FROM nginx:alpine
+WORKDIR /usr/share/nginx/html
+
+COPY index.html .
+COPY index.css .
+COPY main.js .
+COPY assets ./assets
+
+EXPOSE 80

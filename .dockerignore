@@ -1,0 +1,11 @@
+node_modules
+backend
+app
+*.pdf
+optimize-images.js
+package*.json
+README.md
+.git
+.env
+docker-compose.yml
+Dockerfile*
