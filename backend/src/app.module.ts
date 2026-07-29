@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { configuration } from './config/configuration';
 import { validateEnv } from './config/env.validation';
+import { EventPublisherModule } from './common/event-publisher.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './modules/health/health.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -19,6 +20,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     }),
     ScheduleModule.forRoot(),
     PrismaModule,
+    EventPublisherModule,
     HealthModule,
     AuthModule,
     CatalogModule,

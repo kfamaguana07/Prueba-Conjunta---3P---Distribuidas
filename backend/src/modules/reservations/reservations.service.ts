@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { EmailService } from '../notifications/email.service';
+import { EventPublisher } from '../../common/event-publisher.service';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { PayReservationDto } from './dto/pay-reservation.dto';
 
@@ -16,6 +17,7 @@ export class ReservationsService {
     private readonly prisma: PrismaService,
     private readonly payments: PaymentsService,
     private readonly email: EmailService,
+    private readonly publisher: EventPublisher,
   ) {}
 
   private haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
@@ -80,7 +82,7 @@ export class ReservationsService {
     const total = await this.prisma.reservation.count();
     const invoiceNumber = 'CL-' + String(total + 1).padStart(6, '0');
 
-    return this.prisma.reservation.create({
+    const reservation = await this.prisma.reservation.create({
       data: {
         invoiceNumber,
         userId,
@@ -105,6 +107,23 @@ export class ReservationsService {
         deliveryLng: dto.orderType === 'delivery' ? dto.deliveryLng : null,
       },
     });
+    await this.publisher.publish({
+      servicio: 'cavalocal-backend',
+      accion: 'CREATE',
+      entidad: 'RESERVA',
+      usuarioId: userId,
+      datos: {
+        reservationId: reservation.id,
+        invoiceNumber: reservation.invoiceNumber,
+        wineId: dto.wineId,
+        establishmentId: dto.establishmentId,
+        quantity: dto.quantity,
+        orderType: dto.orderType,
+        total: amounts.total,
+        deposit: amounts.deposit,
+      },
+    });
+    return reservation;
   }
 
   async payReservation(userId: string, id: string, card: PayReservationDto) {
@@ -114,7 +133,7 @@ export class ReservationsService {
     if (reservation.status === 'expired') throw new BadRequestException('La reserva expiró. Crea una nueva.');
     if (reservation.status === 'confirmed') throw new BadRequestException('La reserva ya está pagada.');
 
-    this.payments.charge(Number(reservation.deposit), card);
+    const paymentResult = this.payments.charge(Number(reservation.deposit), card);
 
     const emailSent = await this.email.sendInvoice({
       invoiceNumber: reservation.invoiceNumber,
@@ -142,6 +161,29 @@ export class ReservationsService {
       where: { id },
       data: { status: 'confirmed', emailSent },
     });
+    await this.publisher.publish({
+      servicio: 'cavalocal-backend',
+      accion: 'CREATE',
+      entidad: 'PAGO',
+      usuarioId: userId,
+      datos: {
+        reservationId: updated.id,
+        invoiceNumber: updated.invoiceNumber,
+        deposit: Number(updated.deposit),
+        paymentId: paymentResult.paymentId,
+      },
+    });
+    await this.publisher.publish({
+      servicio: 'cavalocal-backend',
+      accion: 'UPDATE',
+      entidad: 'RESERVA',
+      usuarioId: userId,
+      datos: {
+        reservationId: updated.id,
+        status: 'confirmed',
+        emailSent,
+      },
+    });
     return { reservation: updated, emailSent };
   }
 
@@ -150,7 +192,15 @@ export class ReservationsService {
     if (!reservation || reservation.userId !== userId) throw new NotFoundException('Reserva no encontrada.');
     if (reservation.status === 'cancelled') throw new BadRequestException('La reserva ya está cancelada.');
     if (reservation.status === 'expired') throw new BadRequestException('La reserva ya expiró.');
-    return this.prisma.reservation.update({ where: { id }, data: { status: 'cancelled' } });
+    const cancelled = await this.prisma.reservation.update({ where: { id }, data: { status: 'cancelled' } });
+    await this.publisher.publish({
+      servicio: 'cavalocal-backend',
+      accion: 'UPDATE',
+      entidad: 'RESERVA',
+      usuarioId: userId,
+      datos: { reservationId: cancelled.id, status: 'cancelled' },
+    });
+    return cancelled;
   }
 
   // Limpieza: las reservas sin pagar expiran a las 24 horas.

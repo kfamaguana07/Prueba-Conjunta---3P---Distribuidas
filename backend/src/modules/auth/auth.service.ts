@@ -13,6 +13,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { GoogleVerifierService } from './google-verifier.service';
+import { EventPublisher } from '../../common/event-publisher.service';
 
 export interface AuthResult {
   accessToken: string;
@@ -27,6 +28,7 @@ export class AuthService {
     private readonly googleVerifier: GoogleVerifierService,
     private readonly email: EmailService,
     private readonly config: ConfigService,
+    private readonly publisher: EventPublisher,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResult> {
@@ -37,6 +39,14 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = await this.prisma.user.create({
       data: { name: dto.name.trim(), email, phone: dto.phone, passwordHash },
+    });
+    await this.publisher.publish({
+      servicio: 'cavalocal-backend',
+      accion: 'CREATE',
+      entidad: 'USUARIO',
+      usuarioId: user.id,
+      usuarioEmail: user.email,
+      datos: { id: user.id, name: user.name, email: user.email },
     });
     return this.buildResult(user);
   }
@@ -49,6 +59,14 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Correo o contraseña incorrectos.');
 
+    await this.publisher.publish({
+      servicio: 'cavalocal-backend',
+      accion: 'LOGIN',
+      entidad: 'USUARIO',
+      usuarioId: user.id,
+      usuarioEmail: user.email,
+      datos: { email: user.email },
+    });
     return this.buildResult(user);
   }
 
@@ -65,6 +83,14 @@ export class AuthService {
     } else if (!user.googleId) {
       await this.prisma.user.update({ where: { id: user.id }, data: { googleId: profile.sub } });
     }
+    await this.publisher.publish({
+      servicio: 'cavalocal-backend',
+      accion: 'LOGIN',
+      entidad: 'USUARIO',
+      usuarioId: user.id,
+      usuarioEmail: user.email,
+      datos: { provider: 'google', sub: profile.sub },
+    });
     return this.buildResult(user);
   }
 
@@ -103,6 +129,14 @@ export class AuthService {
     await this.prisma.user.update({
       where: { id: user.id },
       data: { passwordHash, resetToken: null, resetTokenExpiresAt: null },
+    });
+    await this.publisher.publish({
+      servicio: 'cavalocal-backend',
+      accion: 'UPDATE',
+      entidad: 'USUARIO',
+      usuarioId: user.id,
+      usuarioEmail: user.email,
+      datos: { action: 'reset_password' },
     });
     return { ok: true };
   }

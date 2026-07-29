@@ -37,6 +37,34 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   MAIL_APP_PASSWORD?: string;
+
+  @IsOptional()
+  @IsString()
+  RABBITMQ_HOST?: string;
+
+  @IsOptional()
+  @IsString()
+  RABBITMQ_PORT?: string;
+
+  @IsOptional()
+  @IsString()
+  RABBITMQ_USER?: string;
+
+  @IsOptional()
+  @IsString()
+  RABBITMQ_PASSWORD?: string;
+
+  @IsOptional()
+  @IsString()
+  RABBITMQ_EXCHANGE?: string;
+
+  @IsOptional()
+  @IsString()
+  RABBITMQ_QUEUE?: string;
+
+  @IsOptional()
+  @IsString()
+  RABBITMQ_ROUTING_KEY?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

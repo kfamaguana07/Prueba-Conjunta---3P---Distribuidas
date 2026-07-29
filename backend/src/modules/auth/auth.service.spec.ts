@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { GoogleVerifierService } from './google-verifier.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../notifications/email.service';
+import { EventPublisher } from '../../common/event-publisher.service';
 
 describe('AuthService.googleLogin', () => {
   let service: AuthService;
@@ -28,6 +29,7 @@ describe('AuthService.googleLogin', () => {
         { provide: JwtService, useValue: jwt },
         { provide: EmailService, useValue: { sendPasswordReset: jest.fn() } },
         { provide: ConfigService, useValue: { get: jest.fn() } },
+        { provide: EventPublisher, useValue: { publish: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
     service = moduleRef.get(AuthService);
