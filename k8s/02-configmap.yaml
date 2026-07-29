@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cavalocal-config
+  namespace: cavalocal
+data:
+  NODE_ENV: "development"
+  PORT: "3001"
+  JWT_EXPIRES_IN: "1d"
+  CORS_ORIGINS: "*"
+  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_EXCHANGE: "audit.events"
+  RABBITMQ_QUEUE: "audit_queue"
+  RABBITMQ_ROUTING_KEY: "audit.event"
+  AUDIT_PORT: "3002"
+  GOOGLE_CLIENT_ID: ""
+  MAIL_USER: ""
+  MAIL_APP_PASSWORD: ""

@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-audit-pvc
+  namespace: cavalocal
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-audit
+  namespace: cavalocal
+spec:
+  serviceName: postgres-audit
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-audit
+  template:
+    metadata:
+      labels:
+        app: postgres-audit
+    spec:
+      containers:
+        - name: postgres-audit
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_USER
+              value: "audit"
+            - name: POSTGRES_PASSWORD
+              value: "audit"
+            - name: POSTGRES_DB
+              value: "audit"
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-audit-data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "audit", "-d", "audit"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "audit", "-d", "audit"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: postgres-audit-data
+          persistentVolumeClaim:
+            claimName: postgres-audit-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-audit
+  namespace: cavalocal
+spec:
+  selector:
+    app: postgres-audit
+  ports:
+    - port: 5432
+      targetPort: 5432
