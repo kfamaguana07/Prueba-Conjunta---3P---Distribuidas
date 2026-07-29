@@ -1,7 +1,7 @@
 import {
   IsEmail,
-  IsNotEmpty,
   IsObject,
+  IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
@@ -11,34 +11,29 @@ import {
 export class CreateAuditEventDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(60)
-  servicio!: string;
-
-  @IsString()
-  @IsNotEmpty()
   @Matches(/^(CREATE|UPDATE|DELETE|LOGIN|LOGOUT|SELECT)$/, {
-    message: 'accion debe ser CREATE|UPDATE|DELETE|LOGIN|LOGOUT|SELECT',
+    message: 'action debe ser CREATE|UPDATE|DELETE|LOGIN|LOGOUT|SELECT',
   })
-  accion!: string;
+  action!: string;
 
   @IsString()
   @IsNotEmpty()
-  @Matches(/^[A-Z-]+$/, { message: 'entidad: MAYÚSCULAS y guiones' })
+  @Matches(/^[A-Z_-]+$/, { message: 'entity: solo MAYÚSCULAS, guiones o guiones bajos' })
   @MaxLength(40)
-  entidad!: string;
+  entity!: string;
 
   @IsObject()
   @IsOptional()
-  datos?: Record<string, unknown>;
+  data?: Record<string, unknown>;
 
   @IsString()
   @IsOptional()
   @MaxLength(60)
-  usuarioId?: string;
+  userId?: string;
 
   @IsEmail()
   @IsOptional()
-  usuarioEmail?: string;
+  userEmail?: string;
 
   @IsOptional()
   @IsString()

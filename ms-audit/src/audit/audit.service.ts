@@ -34,12 +34,12 @@ export class AuditService {
     const timestamp = isNaN(rawTime.getTime()) ? new Date() : rawTime;
     const event = await this.prisma.eventoAuditoria.create({
       data: {
-        servicio: dto.servicio,
-        accion: dto.accion,
-        entidad: dto.entidad,
-        datos: (dto.datos as Prisma.InputJsonValue) ?? Prisma.JsonNull,
-        usuarioId: dto.usuarioId,
-        usuarioEmail: dto.usuarioEmail,
+        servicio: 'cavalocal-backend',
+        accion: dto.action,
+        entidad: dto.entity,
+        datos: (dto.data as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+        usuarioId: dto.userId ?? null,
+        usuarioEmail: dto.userEmail ?? null,
         timestamp,
       },
     });
