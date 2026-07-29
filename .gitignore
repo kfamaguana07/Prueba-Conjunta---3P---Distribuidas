@@ -36,3 +36,7 @@ Thumbs.db
 .DS_Store
 .vscode/
 .idea/
+
+Context.md
+.atl/
+SSE-RABBITMQ-GUIDE.md
