@@ -108,11 +108,10 @@ export class ReservationsService {
       },
     });
     await this.publisher.publish({
-      servicio: 'cavalocal-backend',
-      accion: 'CREATE',
-      entidad: 'RESERVA',
-      usuarioId: userId,
-      datos: {
+      entity: 'RESERVA',
+      action: 'CREATE',
+      userId,
+      data: {
         reservationId: reservation.id,
         invoiceNumber: reservation.invoiceNumber,
         wineId: dto.wineId,
@@ -162,11 +161,10 @@ export class ReservationsService {
       data: { status: 'confirmed', emailSent },
     });
     await this.publisher.publish({
-      servicio: 'cavalocal-backend',
-      accion: 'CREATE',
-      entidad: 'PAGO',
-      usuarioId: userId,
-      datos: {
+      entity: 'PAGO',
+      action: 'CREATE',
+      userId,
+      data: {
         reservationId: updated.id,
         invoiceNumber: updated.invoiceNumber,
         deposit: Number(updated.deposit),
@@ -174,11 +172,10 @@ export class ReservationsService {
       },
     });
     await this.publisher.publish({
-      servicio: 'cavalocal-backend',
-      accion: 'UPDATE',
-      entidad: 'RESERVA',
-      usuarioId: userId,
-      datos: {
+      entity: 'RESERVA',
+      action: 'UPDATE',
+      userId,
+      data: {
         reservationId: updated.id,
         status: 'confirmed',
         emailSent,
@@ -194,11 +191,10 @@ export class ReservationsService {
     if (reservation.status === 'expired') throw new BadRequestException('La reserva ya expiró.');
     const cancelled = await this.prisma.reservation.update({ where: { id }, data: { status: 'cancelled' } });
     await this.publisher.publish({
-      servicio: 'cavalocal-backend',
-      accion: 'UPDATE',
-      entidad: 'RESERVA',
-      usuarioId: userId,
-      datos: { reservationId: cancelled.id, status: 'cancelled' },
+      entity: 'RESERVA',
+      action: 'DELETE',
+      userId,
+      data: { reservationId: cancelled.id, status: 'cancelled' },
     });
     return cancelled;
   }

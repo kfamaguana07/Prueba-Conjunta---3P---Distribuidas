@@ -41,12 +41,11 @@ export class AuthService {
       data: { name: dto.name.trim(), email, phone: dto.phone, passwordHash },
     });
     await this.publisher.publish({
-      servicio: 'cavalocal-backend',
-      accion: 'CREATE',
-      entidad: 'USUARIO',
-      usuarioId: user.id,
-      usuarioEmail: user.email,
-      datos: { id: user.id, name: user.name, email: user.email },
+      entity: 'USUARIO',
+      action: 'CREATE',
+      userId: user.id,
+      userEmail: user.email,
+      data: { id: user.id, name: user.name, email: user.email },
     });
     return this.buildResult(user);
   }
@@ -60,12 +59,11 @@ export class AuthService {
     if (!valid) throw new UnauthorizedException('Correo o contraseña incorrectos.');
 
     await this.publisher.publish({
-      servicio: 'cavalocal-backend',
-      accion: 'LOGIN',
-      entidad: 'USUARIO',
-      usuarioId: user.id,
-      usuarioEmail: user.email,
-      datos: { email: user.email },
+      entity: 'USUARIO',
+      action: 'LOGIN',
+      userId: user.id,
+      userEmail: user.email,
+      data: { email: user.email },
     });
     return this.buildResult(user);
   }
@@ -84,12 +82,11 @@ export class AuthService {
       await this.prisma.user.update({ where: { id: user.id }, data: { googleId: profile.sub } });
     }
     await this.publisher.publish({
-      servicio: 'cavalocal-backend',
-      accion: 'LOGIN',
-      entidad: 'USUARIO',
-      usuarioId: user.id,
-      usuarioEmail: user.email,
-      datos: { provider: 'google', sub: profile.sub },
+      entity: 'USUARIO',
+      action: 'LOGIN',
+      userId: user.id,
+      userEmail: user.email,
+      data: { provider: 'google', sub: profile.sub },
     });
     return this.buildResult(user);
   }
@@ -131,12 +128,11 @@ export class AuthService {
       data: { passwordHash, resetToken: null, resetTokenExpiresAt: null },
     });
     await this.publisher.publish({
-      servicio: 'cavalocal-backend',
-      accion: 'UPDATE',
-      entidad: 'USUARIO',
-      usuarioId: user.id,
-      usuarioEmail: user.email,
-      datos: { action: 'reset_password' },
+      entity: 'USUARIO',
+      action: 'UPDATE',
+      userId: user.id,
+      userEmail: user.email,
+      data: { action: 'reset_password' },
     });
     return { ok: true };
   }

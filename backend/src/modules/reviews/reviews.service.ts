@@ -1,27 +1,38 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { EventPublisher } from '../../common/event-publisher.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 
 const round1 = (n: number | null) => (n != null ? Math.round(n * 10) / 10 : null);
 
 @Injectable()
 export class ReviewsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly publisher: EventPublisher,
+  ) {}
 
   async createOrUpdate(userId: string, dto: CreateReviewDto) {
     const existing = await this.prisma.review.findFirst({
       where: { userId, wineId: dto.wineId, targetType: 'WINE' },
     });
-    const data = { rating: dto.rating, comment: dto.comment ?? null };
-    const review = existing
-      ? await this.prisma.review.update({ where: { id: existing.id }, data })
+    const reviewData = { rating: dto.rating, comment: dto.comment ?? null };
+    const isUpdate = !!existing;
+    const review = isUpdate
+      ? await this.prisma.review.update({ where: { id: existing.id }, data: reviewData })
       : await this.prisma.review.create({
-          data: { userId, targetType: 'WINE', wineId: dto.wineId, ...data },
+          data: { userId, targetType: 'WINE', wineId: dto.wineId, ...reviewData },
         });
     const agg = await this.prisma.review.aggregate({
       where: { wineId: dto.wineId, targetType: 'WINE' },
       _avg: { rating: true },
       _count: { _all: true },
+    });
+    await this.publisher.publish({
+      entity: 'REVIEW',
+      action: isUpdate ? 'UPDATE' : 'CREATE',
+      userId,
+      data: { reviewId: review.id, wineId: dto.wineId, rating: dto.rating },
     });
     return { review, avgRating: round1(agg._avg.rating), reviewCount: agg._count._all };
   }

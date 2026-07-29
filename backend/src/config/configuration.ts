@@ -18,7 +18,7 @@ export const configuration = () => ({
     port: parseInt(process.env.RABBITMQ_PORT ?? '5672', 10),
     user: process.env.RABBITMQ_USER ?? 'audit_user',
     password: process.env.RABBITMQ_PASSWORD ?? 'audit_pass',
-    exchange: process.env.RABBITMQ_EXCHANGE ?? 'audit_exchange',
+    exchange: process.env.RABBITMQ_EXCHANGE ?? 'audit.events',
     queue: process.env.RABBITMQ_QUEUE ?? 'audit_queue',
     routingKey: process.env.RABBITMQ_ROUTING_KEY ?? 'audit.event',
   },

@@ -97,7 +97,7 @@ export class EventPublisher implements OnModuleInit, OnModuleDestroy {
       this.channel.publish(this.exchange, this.routingKey, message, {
         persistent: true,
       });
-      this.logger.debug(`Evento publicado: ${event.accion} en ${event.entidad}`);
+      this.logger.debug(`Evento publicado: ${event.action} en ${event.entity}`);
     } catch (error) {
       this.logger.error(`Error publicando evento: ${(error as Error).message}`);
       this.handleDisconnect();

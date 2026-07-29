@@ -1,21 +1,34 @@
-# docker-compose — entorno local de CavaLocal + auditoría
+version: '3.9'
+
 # Uso:  docker compose up --build
 #
 # Servicios:
 #   rabbitmq       : broker AMQP (5672) + management UI (15672)
-#   postgres-app   : BD del backend CavaLocal
+#   postgres       : BD principal del backend CavaLocal
 #   postgres-audit : BD del microservicio de auditoría
-#   backend        : API NestJS (publica eventos en RabbitMQ)
+#   backend        : API NestJS — publica eventos en RabbitMQ
 #   ms-audit       : consume RabbitMQ, persiste, expone REST + SSE
-#   dashboard      : panel estático servido por nginx
+#   landing        : landing page estático (nginx)  → :3000
+#   app            : Expo web (React Native)        → :8081
+#   dashboard      : panel de auditoría (nginx)     → :8082
+
+volumes:
+  pg-app-data:
+  pg-audit-data:
+
+networks:
+  app-net:
+    driver: bridge
 
 services:
+
+  # ── Broker ────────────────────────────────────────────────────────────────
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: audit_user
-      RABBITMQ_DEFAULT_PASS: audit_pass
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -27,19 +40,20 @@ services:
     networks:
       - app-net
 
-  postgres-app:
+  # ── Bases de datos ────────────────────────────────────────────────────────
+  postgres:
     image: postgres:16-alpine
     container_name: postgres-app
     environment:
-      POSTGRES_USER: cavalocal
-      POSTGRES_PASSWORD: cavalocal
-      POSTGRES_DB: cavalocal
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT}:5432"
     volumes:
       - pg-app-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cavalocal"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -58,41 +72,54 @@ services:
     volumes:
       - pg-audit-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U audit"]
+      test: ["CMD-SHELL", "pg_isready -U audit -d audit"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - app-net
 
+  # ── Backend NestJS ────────────────────────────────────────────────────────
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: cavalocal-backend
+    restart: unless-stopped
     depends_on:
-      postgres-app:
+      postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://cavalocal:cavalocal@postgres-app:5432/cavalocal?schema=public
-      JWT_SECRET: cambiame-por-un-secreto-largo
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: audit_user
-      RABBITMQ_PASSWORD: audit_pass
-      RABBITMQ_EXCHANGE: audit_exchange
-      RABBITMQ_QUEUE: audit_queue
-      RABBITMQ_ROUTING_KEY: audit.event
-      CORS_ORIGINS: "*"
-      PORT: 3001
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${PORT}
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      MAIL_USER: ${MAIL_USER}
+      MAIL_APP_PASSWORD: ${MAIL_APP_PASSWORD}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE}
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE}
+      RABBITMQ_ROUTING_KEY: ${RABBITMQ_ROUTING_KEY}
     ports:
-      - "3001:3001"
+      - "${PORT}:${PORT}"
     networks:
       - app-net
 
+  # ── Microservicio de auditoría ────────────────────────────────────────────
   ms-audit:
-    build: ./ms-audit
+    build:
+      context: ./ms-audit
+      dockerfile: Dockerfile
     container_name: ms-audit
+    restart: unless-stopped
     depends_on:
       postgres-audit:
         condition: service_healthy
@@ -100,36 +127,60 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://audit:audit@postgres-audit:5432/audit?schema=public
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: audit_user
-      RABBITMQ_PASSWORD: audit_pass
-      RABBITMQ_EXCHANGE: audit_exchange
-      RABBITMQ_QUEUE: audit_queue
-      RABBITMQ_ROUTING_KEY: audit.event
-      CORS_ORIGINS: "*"
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE}
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE}
+      RABBITMQ_ROUTING_KEY: ${RABBITMQ_ROUTING_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS}
       PORT: 3002
     ports:
       - "3002:3002"
     networks:
       - app-net
 
+  # ── Landing page ──────────────────────────────────────────────────────────
+  landing:
+    build:
+      context: .
+      dockerfile: Dockerfile.landing
+    container_name: cavalocal-landing
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - app-net
+
+  # ── App Expo web ──────────────────────────────────────────────────────────
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: cavalocal-app
+    restart: unless-stopped
+    environment:
+      EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL}
+      EXPO_PUBLIC_LANDING_URL: ${EXPO_PUBLIC_LANDING_URL}
+      EXPO_PUBLIC_GOOGLE_MAPS_API_KEY: ${EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}
+    ports:
+      - "8081:8081"
+    depends_on:
+      - backend
+    networks:
+      - app-net
+
+  # ── Dashboard de auditoría ────────────────────────────────────────────────
   dashboard:
     image: nginx:alpine
-    container_name: dashboard
+    container_name: audit-dashboard
+    restart: unless-stopped
     depends_on:
       - ms-audit
     volumes:
       - ./dashboard:/usr/share/nginx/html:ro
     ports:
-      - "8081:80"
+      - "8082:80"
     networks:
       - app-net
-
-volumes:
-  pg-app-data:
-  pg-audit-data:
-
-networks:
-  app-net:
-    driver: bridge
