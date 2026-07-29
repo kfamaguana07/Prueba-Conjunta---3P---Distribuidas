@@ -1,61 +1,182 @@
 # CavaLocal
 
-Marketplace intermediario de vinos para Caracas: descubre etiquetas, compara precios entre tiendas y **reserva** en la más cercana pagando una **seña online**; la **factura llega por correo**.
+Marketplace intermediario de vinos para Caracas: descubre etiquetas, compara precios entre tiendas y **reserva** en la más cercana pagando una **seña online**.
 
-> Proyecto en desarrollo. Identidad: burdeos `#641E2E` · dorado `#C2912B` · crema `#F3ECDD`.
+---
 
-## Estructura del repo
+## Arquitectura
 
-| Carpeta | Qué es | Stack |
+| Servicio | Descripción | Puerto |
 |---|---|---|
-| `web/` | **Frontend oficial** (e-commerce) | HTML/CSS/JS puro (ES modules), sin frameworks |
-| `backend/` | **API REST** | NestJS + TypeScript + Prisma + PostgreSQL |
-| Raíz (`index.html`, `main.js`, `assets/`) | **Landing** de marketing | HTML + GSAP (scroll-storytelling) |
-| `app/` | App móvil previa (**deprecada**) | React Native + Expo |
+| `web` | Frontend e-commerce (HTML/CSS/JS) | 8080 |
+| `backend` | API REST (NestJS + Prisma + PostgreSQL) | 3001 |
+| `ms-audit` | Microservicio de auditoría (NestJS + RabbitMQ + SSE) | 3002 |
+| `dashboard` | Dashboard de auditoría en tiempo real | — |
+| `landing` | Página de marketing | — |
+| `postgres` | Base de datos principal | 5432 |
+| `postgres-audit` | Base de datos de auditoría | 5432 |
+| `rabbitmq` | Message broker (auditoría de eventos) | 5672 |
 
-## Funcionalidades
+---
 
-- **Login** por correo/contraseña y **"Continuar con Google"** (Google Identity Services), en página partida inmersiva.
-- **Catálogo** de vinos con búsqueda, filtros, comparación de precios por tienda y vista de mapa.
-- **Reserva + seña**: checkout de 4 pasos (reserva → datos → pago → confirmación). Seña **20%** online, saldo **80%** al retirar. **5%** de descuento en la primera reserva.
-- **Pago simulado** (validación Luhn/vencimiento/CVV; no se cobra dinero real ni se guardan datos de tarjeta).
-- **Factura por correo real** (Nodemailer + Gmail SMTP) + factura imprimible.
+## Imágenes Docker (DockerHub)
 
-## Cómo correrlo en local
+Las imágenes están publicadas en DockerHub bajo el usuario `kfamaguana`:
 
-### 1. Base de datos (PostgreSQL)
-Necesitas un PostgreSQL accesible (local o en la nube, p. ej. Neon/Supabase). Crea una base `cavalocal`.
+| Imagen | Tag |
+|---|---|
+| `kfamaguana/cavalocal-backend` | `latest` |
+| `kfamaguana/cavalocal-ms-audit` | `latest` |
+| `kfamaguana/cavalocal-web` | `latest` |
+| `kfamaguana/cavalocal-dashboard` | `latest` |
+| `kfamaguana/cavalocal-landing` | `latest` |
 
-### 2. Backend (NestJS)
+> No es necesario construir las imágenes localmente. Kubernetes las descarga automáticamente desde DockerHub al aplicar los manifests.
+
+Si de todas formas quieres construirlas:
+
 ```bash
-cd backend
-cp .env.example .env          # completa las variables (ver abajo)
-npm install
-npx prisma migrate deploy     # aplica las migraciones
-npx prisma generate
-npm run prisma:seed           # datos de ejemplo (incluye ana@example.com / 1234)
-npm run start:dev             # API en http://localhost:3001 (Swagger en /docs)
+docker build -t kfamaguana/cavalocal-backend:latest -f backend/Dockerfile backend/
+docker build -t kfamaguana/cavalocal-ms-audit:latest -f ms-audit/Dockerfile ms-audit/
+docker build -t kfamaguana/cavalocal-web:latest -f Dockerfile.web .
+docker build -t kfamaguana/cavalocal-dashboard:latest -f Dockerfile.dashboard .
+docker build -t kfamaguana/cavalocal-landing:latest -f Dockerfile.landing .
 ```
 
-Variables de entorno (`backend/.env`):
-- `DATABASE_URL` — cadena de conexión a PostgreSQL.
-- `JWT_SECRET` — secreto para los tokens.
-- `GOOGLE_CLIENT_ID` — OAuth Client ID de Google Cloud (para el login con Google).
-- `MAIL_USER` / `MAIL_APP_PASSWORD` — correo Gmail + **contraseña de aplicación** (para enviar la factura).
+---
 
-> Sin `GOOGLE_CLIENT_ID` el login con Google muestra un aviso y el resto funciona. Sin `MAIL_*` la reserva igual se confirma, pero no se envía el correo.
+## Despliegue en Kubernetes (Minikube)
 
-### 3. Frontend (web)
+### Requisitos previos
+
+- [Minikube](https://minikube.sigs.k8s.io/docs/start/) instalado y corriendo
+- [kubectl](https://kubernetes.io/docs/tasks/tools/) instalado
+
+### 1. Iniciar Minikube
+
 ```bash
-npx http-server web -p 8080   # http://localhost:8080
-```
-El front consume el backend en `http://localhost:3001` (configurable en `web/js/config.js`). Pega ahí también tu `GOOGLE_CLIENT_ID`.
-
-## Tests
-```bash
-cd backend && npm test        # Jest (auth, payments, reservations, notifications)
-cd web && npm test            # node --test (validadores, carrusel, tarjeta)
+minikube start
 ```
 
-## Licencia
-Privado / académico. Todos los derechos reservados a sus autores.
+### 2. Habilitar el addon de Ingress
+
+```bash
+minikube addons enable ingress
+```
+
+### 3. Aplicar todos los manifests
+
+```bash
+kubectl apply -f k8s/
+```
+
+### 4. Verificar que los pods estén Running
+
+```bash
+kubectl get pods -n cavalocal -w
+```
+
+Esperar hasta que todos los pods muestren `Running`. Puede tomar 2-3 minutos la primera vez.
+
+### 5. Cargar datos de prueba (una sola vez)
+
+```bash
+kubectl exec -n cavalocal deploy/backend -- npx prisma db seed
+```
+
+### 6. Acceder a la aplicación
+
+```bash
+kubectl port-forward svc/web 8080:80 -n cavalocal
+```
+
+Abrir `http://localhost:8080` en el navegador.
+
+---
+
+## Acceso por dominio (Ingress)
+
+Para acceder mediante el dominio `conjunta3p.espe.edu.ec`, obtén la IP de Minikube:
+
+```bash
+minikube ip
+```
+
+Agrega esta línea al archivo de hosts del sistema (reemplaza `<MINIKUBE_IP>` con el resultado):
+
+**Windows** (ejecutar como Administrador en PowerShell):
+```powershell
+Add-Content C:\Windows\System32\drivers\etc\hosts "<MINIKUBE_IP>  conjunta3p.espe.edu.ec"
+```
+
+**Linux/macOS:**
+```bash
+echo "<MINIKUBE_IP>  conjunta3p.espe.edu.ec" | sudo tee -a /etc/hosts
+```
+
+### URLs disponibles
+
+| URL | Descripción |
+|---|---|
+| `http://conjunta3p.espe.edu.ec/` | Frontend web (e-commerce) |
+| `http://conjunta3p.espe.edu.ec/api/docs` | Swagger / API docs |
+| `http://conjunta3p.espe.edu.ec/api/audit` | API de auditoría (filtros por query params) |
+| `http://conjunta3p.espe.edu.ec/dashboard/` | Dashboard de auditoría en tiempo real |
+| `http://conjunta3p.espe.edu.ec/landing/` | Landing page |
+
+---
+
+## API de Auditoría — Filtros
+
+`GET /api/audit` acepta los siguientes query params:
+
+| Parámetro | Descripción | Ejemplo |
+|---|---|---|
+| `entidad` | Entidad auditada | `USUARIO`, `RESERVA`, `PAGO` |
+| `accion` | Acción realizada | `CREATE`, `UPDATE`, `DELETE`, `LOGIN` |
+| `usuarioId` | ID del usuario | `clx...` |
+| `usuarioEmail` | Email del usuario | `ana@example.com` |
+| `desde` | Fecha inicio (ISO 8601) | `2024-01-01T00:00:00Z` |
+| `hasta` | Fecha fin (ISO 8601) | `2024-12-31T23:59:59Z` |
+| `page` | Página (default: 1) | `1` |
+| `pageSize` | Resultados por página (default: 20, max: 200) | `20` |
+
+Ejemplo:
+```
+GET /api/audit?entidad=RESERVA&accion=CREATE&page=1&pageSize=10
+```
+
+---
+
+## Dashboard en tiempo real (SSE)
+
+El dashboard en `http://conjunta3p.espe.edu.ec/dashboard/` se conecta al endpoint SSE:
+
+```
+GET /api/audit/sse/audit
+```
+
+Cada operación en el backend (registro, login, reserva, pago, cancelación) emite un evento en tiempo real visible en el dashboard.
+
+---
+
+## Escalado del microservicio de auditoría
+
+El microservicio `ms-audit` corre con **2 réplicas** por defecto (configurado en `k8s/07-ms-audit.yaml`).
+
+Usa `prefetch(1)` y acknowledgment manual sobre RabbitMQ, garantizando que cada mensaje sea procesado **exactamente una vez** sin importar cuántas réplicas haya activas (competitive queue consumption).
+
+Para escalar manualmente:
+```bash
+kubectl scale deployment ms-audit --replicas=2 -n cavalocal
+```
+
+---
+
+## Teardown
+
+Para eliminar todos los recursos del clúster:
+
+```bash
+kubectl delete namespace cavalocal
+```
