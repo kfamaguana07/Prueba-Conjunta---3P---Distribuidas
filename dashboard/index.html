@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CavaLocal — Dashboard de Auditoría</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="audit-body">
+
+  <header class="audit-header">
+    <div class="audit-header-inner">
+      <div class="brand">
+        <span class="wordmark">CavaLocal</span>
+        <span class="badge">Auditoría</span>
+      </div>
+      <div class="sse-status" id="sse-status" data-state="connecting">
+        <span class="dot"></span>
+        <span class="label">Conectando…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="audit-main">
+    <section class="audit-filters" aria-label="Filtros">
+      <div class="field">
+        <label for="f-entidad">Entidad</label>
+        <select id="f-entidad">
+          <option value="">Todas</option>
+          <option value="USUARIO">USUARIO</option>
+          <option value="RESERVA">RESERVA</option>
+          <option value="PAGO">PAGO</option>
+          <option value="VINO">VINO</option>
+          <option value="TIENDA">TIENDA</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-accion">Acción</label>
+        <select id="f-accion">
+          <option value="">Todas</option>
+          <option value="CREATE">CREATE</option>
+          <option value="UPDATE">UPDATE</option>
+          <option value="DELETE">DELETE</option>
+          <option value="LOGIN">LOGIN</option>
+          <option value="LOGOUT">LOGOUT</option>
+          <option value="SELECT">SELECT</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-usuario">Usuario</label>
+        <input id="f-usuario" type="text" placeholder="ID o email" />
+      </div>
+      <div class="field">
+        <label for="f-desde">Desde</label>
+        <input id="f-desde" type="datetime-local" />
+      </div>
+      <div class="field">
+        <label for="f-hasta">Hasta</label>
+        <input id="f-hasta" type="datetime-local" />
+      </div>
+      <div class="field actions">
+        <button id="btn-apply" class="btn-primary">Aplicar</button>
+        <button id="btn-clear" class="btn-ghost">Limpiar</button>
+      </div>
+    </section>
+
+    <section class="audit-list-wrapper" aria-label="Eventos de auditoría">
+      <table class="audit-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Entidad</th>
+            <th>Acción</th>
+            <th>Servicio</th>
+            <th>Usuario</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody id="audit-tbody"></tbody>
+      </table>
+      <div class="audit-pager">
+        <button id="btn-prev" class="btn-ghost">‹ Anterior</button>
+        <span id="pager-info"></span>
+        <button id="btn-next" class="btn-ghost">Siguiente ›</button>
+      </div>
+    </section>
+
+    <aside id="audit-detail" class="audit-detail" hidden>
+      <div class="audit-detail-head">
+        <h2>Detalle del evento</h2>
+        <button id="btn-close-detail" class="btn-ghost">✕</button>
+      </div>
+      <pre id="audit-detail-json"></pre>
+    </aside>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
