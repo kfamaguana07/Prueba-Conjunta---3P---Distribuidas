@@ -291,3 +291,15 @@ ul { list-style: none; }
 .nav-reservas { font-size: 13px; font-weight: 700; color: var(--wine, #641E2E); text-decoration: none; white-space: nowrap; }
 .nav-reservas:hover { text-decoration: underline; }
 .load-more:hover { background: var(--gold-soft); }
+
+/* ---- Dashboard (navbar) ---- */
+.nav-dash {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 700; color: #fff;
+  background: var(--wine, #641E2E);
+  padding: 8px 14px; border-radius: 50px;
+  border: none; cursor: pointer; white-space: nowrap;
+  transition: var(--transition);
+}
+.nav-dash:hover { background: #4A1521; }
+.nav-dash svg { width: 14px; height: 14px; }

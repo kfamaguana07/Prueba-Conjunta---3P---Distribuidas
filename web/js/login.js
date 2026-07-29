@@ -57,7 +57,10 @@ function redirectAfterAuth() {
   // Si el usuario venía de intentar reservar un vino, lo devolvemos a ese vino.
   const pending = takePendingReturn();
   const m = /^return=reserve:(.+)$/.exec(pending || '');
-  window.location.href = m ? 'index.html?reserve=' + encodeURIComponent(m[1]) : 'index.html';
+  if (m) { window.location.href = 'index.html?reserve=' + encodeURIComponent(m[1]); return; }
+  // Si venía del botón Dashboard, lo llevamos al panel de auditoría.
+  if (pending === 'return=dashboard') { window.location.href = 'http://localhost:8082'; return; }
+  window.location.href = 'index.html';
 }
 
 async function submit(e) {
@@ -120,6 +123,12 @@ el.form.addEventListener('submit', submit);
 
 if (new URLSearchParams(location.search).has('register')) setMode('register');
 if (new URLSearchParams(location.search).has('expired')) showError('Tu sesión expiró. Inicia sesión de nuevo para continuar.');
+// Si viene del botón Dashboard, avisa que debe iniciar sesión primero.
+let pendingReturn = takePendingReturn();
+if (pendingReturn === 'return=dashboard') {
+  showError('Debés iniciar sesión para acceder al Dashboard.');
+  setPendingReturn('return=dashboard'); // lo restauramos para redirigir tras login
+}
 window.addEventListener('load', () => setTimeout(initGoogle, 300));
 
 // ---------- media del aside: respetar prefers-reduced-motion ----------

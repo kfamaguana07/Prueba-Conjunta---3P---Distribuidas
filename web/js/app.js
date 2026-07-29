@@ -166,8 +166,14 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
   function renderAccount() {
     var el = $('#account');
     var user = getUser();
+    var dash = user && user.role === 'ADMIN'
+      ? '<button class="nav-dash" id="nav-dashboard" title="Panel de auditoría en tiempo real">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>' +
+        'Dashboard</button>'
+      : '';
     if (user) {
-      el.innerHTML = '<a class="nav-reservas" href="reservations.html">Mis reservas</a>' +
+      el.innerHTML = dash +
+        '<a class="nav-reservas" href="reservations.html">Mis reservas</a>' +
         '<div class="user-pill" data-logout="1"><div class="avatar">' + esc(initials(user.name)) + '</div><span class="uname">' + esc(user.name.split(' ')[0]) + '</span></div>';
     } else {
       el.innerHTML = '<a class="btn-login" href="login.html">Iniciar sesión</a>';
@@ -377,9 +383,17 @@ import { haversineKm, getUserLocation, DEFAULT_LOC } from './geo.js';
       searchTimer = setTimeout(function () { reload(); }, 300);
     });
 
+    // Botón Dashboard: exige sesión; si no, redirige a login con aviso.
+    // (El botón solo lo renderiza renderAccount() si el rol es ADMIN.)
+
     document.addEventListener('click', function (e) {
-      var t = e.target.closest('[data-cat],[data-sort],[data-mode],[data-open],[data-reserve],[data-detail],[data-type],[data-country],[data-price],[data-logout],#loadMore,#clearFilters');
+      var t = e.target.closest('[data-cat],[data-sort],[data-mode],[data-open],[data-reserve],[data-detail],[data-type],[data-country],[data-price],[data-logout],#loadMore,#clearFilters,#nav-dashboard');
       if (!t) return;
+      if (t.id === 'nav-dashboard') {
+        if (getToken()) window.open('http://localhost:8082', '_blank', 'noopener');
+        else { setPendingReturn('return=dashboard'); window.location.href = 'login.html'; }
+        return;
+      }
       if (t.id === 'clearFilters') { state.term = ''; state.type = ''; state.country = ''; state.price = 'all'; $('#search').value = ''; reload(); return; }
       if (t.id === 'loadMore') { e.preventDefault(); state.page += 1; loadPage(false).then(function () { renderView(); }); return; }
       if (t.hasAttribute('data-cat')) {

@@ -21,8 +21,9 @@ body { background: var(--bg); }
 }
 .audit-header-inner {
   max-width: 1200px; margin: 0 auto;
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
+.header-right { display: flex; align-items: center; gap: 16px; }
 .brand { display: flex; align-items: baseline; gap: 12px; }
 .wordmark { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 1.6rem; }
 .badge {
@@ -36,6 +37,15 @@ body { background: var(--bg); }
 .sse-status[data-state="connected"] .dot { background: #6EE7A7; box-shadow: 0 0 0 4px rgba(110,231,167,.25); }
 .sse-status[data-state="connecting"] .dot { background: var(--dorado); }
 .sse-status[data-state="disconnected"] .dot { background: #EF4444; }
+
+.nav-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .85rem; font-weight: 600; color: #fff;
+  background: rgba(255,255,255,.12); text-decoration: none;
+  padding: 8px 14px; border-radius: 50px; transition: background .2s;
+}
+.nav-back:hover { background: rgba(255,255,255,.22); }
+.nav-back svg { width: 16px; height: 16px; }
 
 .audit-main { max-width: 1200px; margin: 24px auto; padding: 0 28px; display: grid; grid-template-columns: 1fr; gap: 20px; }
 
